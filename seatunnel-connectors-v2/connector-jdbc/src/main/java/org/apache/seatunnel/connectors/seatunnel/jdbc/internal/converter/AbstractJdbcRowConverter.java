@@ -220,6 +220,8 @@ public abstract class AbstractJdbcRowConverter implements JdbcRowConverter {
                         statementIndex,
                         sourceType);
             } catch (Exception e) {
+                log.info("tableName:{},fieldName:{},fieldValue:{},dataType:{}",row.getTableId(),rowType.getFieldNames()[fieldIndex],row.getField(fieldIndex),rowType.getFieldType(fieldIndex).getSqlType());
+                log.error("=============original exception==============================",e);
                 throw new JdbcConnectorException(
                         JdbcConnectorErrorCode.DATA_TYPE_CAST_FAILED,
                         "error field:" + rowType.getFieldNames()[fieldIndex],
