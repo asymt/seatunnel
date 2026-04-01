@@ -19,7 +19,9 @@ package org.apache.seatunnel.connectors.seatunnel.jdbc.utils;
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.sql.Time;
 import java.sql.Timestamp;
 
@@ -56,13 +58,17 @@ public final class JdbcFieldTypeUtils {
     }
 
     public static String getString(ResultSet resultSet, int columnIndex) throws SQLException {
-        Object obj = resultSet.getObject(columnIndex);
-        if (obj == null) {
-            return null;
-        }
+        // Use ResultSetMetaData to check the column type before reading,
+        // avoiding the "stream already closed" issue with LONGVARCHAR/LONGVARBINARY types.
+        ResultSetMetaData metaData = resultSet.getMetaData();
+        int columnType = metaData.getColumnType(columnIndex);
 
-        // Add special handling for the BLOB data type.
-        if (obj instanceof java.sql.Blob) {
+        // Special handling for BLOB data type.
+        if (columnType == Types.BLOB) {
+            Object obj = resultSet.getObject(columnIndex);
+            if (obj == null) {
+                return null;
+            }
             java.sql.Blob blob = (java.sql.Blob) obj;
             try {
                 byte[] bytes = blob.getBytes(1, (int) blob.length());
@@ -71,7 +77,15 @@ public final class JdbcFieldTypeUtils {
                 blob.free();
             }
         }
-        return resultSet.getString(columnIndex);
+
+        // For other types (including LONGVARCHAR), directly use getString to avoid
+        // the "stream already closed" issue caused by calling getObject first.
+        String value = resultSet.getString(columnIndex);
+        // Handle null value check after getString call
+        if (value == null) {
+            return null;
+        }
+        return value;
     }
 
     public static BigDecimal getBigDecimal(ResultSet resultSet, int columnIndex)
